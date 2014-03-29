@@ -1,31 +1,35 @@
 const {Cc,Ci} = require("chrome");
 
-//Services for syncing portion
+// XUL IMPORTS
 var bmsvc = Cc["@mozilla.org/browser/nav-bookmarks-service;1"]
                       .getService(Ci.nsINavBookmarksService);
 var ios = Cc["@mozilla.org/network/io-service;1"]
                     .getService(Ci.nsIIOService);
-var tabs = require("sdk/tabs");
-
-var menuFolder = bmsvc.bookmarksMenuFolder; // Bookmarks menu folder
-var tabsyncFolderId;
-var inewBkmkId;
-
-//Services for Opening Tabs
 var historyService = Cc["@mozilla.org/browser/nav-history-service;1"]
                                .getService(Ci.nsINavHistoryService);
 var options = historyService.getNewQueryOptions();
 var query = historyService.getNewQuery(); 
-var widgets = require("sdk/widget");
 
 var ww = Cc["@mozilla.org/embedcomp/window-watcher;1"]
              .getService(Ci.nsIWindowWatcher);
 var wm = Cc["@mozilla.org/appshell/window-mediator;1"]
                    .getService(Ci.nsIWindowMediator);
+
+// ADDON-SDK IMPORTS
+var tabs = require("sdk/tabs");
+var widgets = require("sdk/widget");
+
+// GLOBAL VARIABLES
+var menuFolder = bmsvc.bookmarksMenuFolder; // Bookmarks menu folder
+var tabsyncFolderId;
+var inewBkmkId;
 var mainWindow;
 var addTabs = {};
 
-// Open a new window.
+/*
+ * MERGE SYNC
+ * combines saved tabs and current tabs into your current browser window
+ */
 function mergeSync(){
    findSyncFolder();
    getSyncWindow();
@@ -36,7 +40,14 @@ function mergeSync(){
      mainWindow.gBrowser.addTab(key); 
    }
 }
-  
+
+// mainWindow is current browser window
+function getSyncWindow(){
+   mainWindow = wm.getMostRecentWindow("navigator:browser");
+} 
+
+// addTabs now has list of tabs to open
+// new tabs have been saved
 function mergeTabs(){ 
    //A. get saved tabs
    query.setFolders([tabsyncFolderId],1);   
@@ -65,9 +76,14 @@ function mergeTabs(){
    } 
 }
 
-function getSyncWindow(){
-   mainWindow = wm.getMostRecentWindow("navigator:browser");
-
+/*
+ * PURGE SYNC
+ * removes all existing saved tabs and replaces with mine
+ */
+function purgeSync(){
+   findSyncFolder();
+   removeExistingSavedTabs();
+   bookmarkTabs();
 }
 
 function removeExistingSavedTabs(){
@@ -79,15 +95,27 @@ function removeExistingSavedTabs(){
    inewBkmkId = bmsvc.insertBookmark(tabsyncFolderId, uri, bmsvc.DEFAULT_INDEX, "TabSyncAnchor");
 }
 
+function bookmarkTabs(){
+   //save all open tabs to a bookmark folder to sync
+   let bookmarks = [];
+   for each (var tab in tabs){
+      bmsvc.insertBookmark(tabsyncFolderId, ios.newURI(tab.url, null, null), bmsvc.DEFAULT_INDEX, tab.title);
+   }
+}
 
+/*
+ * UTILITIES
+ */
+
+//tabsyncFolderId is now updated
 function findSyncFolder(){
    //search for anchor bookmark first
    //necessary because Places API or nslNavBookmarksService
-   //doesn't allow search for Folder
+   //doesn't have search for Folder function
    var uri = ios.newURI("about:tabsync", null, null);
    //if bookmark about:tabsync, does not exist, create folder and anchor
    if(bmsvc.isBookmarked(uri)){
-      //if it does exist, get parent folder
+      //if anchor exists, get parent folder
       var bookmarksArray = bmsvc.getBookmarkIdsForURI(uri, {});
       tabsyncFolderId = bmsvc.getFolderIdForItem(bookmarksArray[0])
    } else {
@@ -98,21 +126,10 @@ function findSyncFolder(){
    }
 }
 
-//save all open tabs to a bookmark folder to sync
-function bookmarkTabs(){
-   let bookmarks = [];
-   for each (var tab in tabs){
-      bmsvc.insertBookmark(tabsyncFolderId, ios.newURI(tab.url, null, null), bmsvc.DEFAULT_INDEX, tab.title);
-   }
-}
-
-function purgeSync(){
-   findSyncFolder();
-   removeExistingSavedTabs();
-   bookmarkTabs();
-}
-
-//main
+/*
+ * MAIN FUNCTION
+ *
+ */
 findSyncFolder()
 tabs.on('ready', purgeSync);
 
