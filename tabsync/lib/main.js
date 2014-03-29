@@ -26,41 +26,60 @@ var mainWindow;
 var addTabs = {};
 
 // Open a new window.
-function openSyncWindow(){
-   mainWindow = wm.getMostRecentWindow("navigator:browser");
-
+function mergeSync(){
+   findSyncFolder();
+   getSyncWindow();
+   //D. open all saved but unopened tabs
+   for (var key in addTabs){
+     console.log("c:"+key);
+     mainWindow.gBrowser.addTab(key); 
+   }
+}
+  
+function mergeTabs(){ 
+   //A. get saved tabs
    query.setFolders([tabsyncFolderId],1);   
    var result = historyService.executeQuery(query, options);
    var rootNode = result.root;
    rootNode.containerOpen = true;
-   
-   // iterate over the immediate children of this folder
    for (var i = 0; i < rootNode.childCount; i ++) {
      var node = rootNode.getChild(i);
      addTabs[node.uri] = node.uri;
      console.log("a:"+node.uri);
    }
-   // close a container after using it!
    rootNode.containerOpen = false;
 
-   //remove duplicates
+   //B. get list of saved but unopened tabs
    for each (var tab in tabs){
       console.log("b:"+tab.url);
       if(addTabs[tab.url]){
          delete addTabs[tab.url];
       }
    }
-   //merge, open all remaining non-duplicate ones
-   for (var key in addTabs){
-     console.log("c:"+key);
-     mainWindow.gBrowser.addTab(key); 
-   }
+   //C. get list of opened but unsaved tabs
+   for each (var tab in tabs){
+      if(!addTabs[tab.url]){
+         bmsvc.insertBookmark(tabsyncFolderId, ios.newURI(tab.url, null, null), bmsvc.DEFAULT_INDEX, tab.title);
+      }
+   } 
+}
 
+function getSyncWindow(){
+   mainWindow = wm.getMostRecentWindow("navigator:browser");
 
 }
 
+function removeExistingSavedTabs(){
+   //delete all bookmarks inside tabsync group 
+   bmsvc.removeFolderChildren(tabsyncFolderId);
 
-function checkSyncFolder(){
+   //add back in the anchor
+   var uri = ios.newURI("about:tabsync", null, null);
+   inewBkmkId = bmsvc.insertBookmark(tabsyncFolderId, uri, bmsvc.DEFAULT_INDEX, "TabSyncAnchor");
+}
+
+
+function findSyncFolder(){
    //search for anchor bookmark first
    //necessary because Places API or nslNavBookmarksService
    //doesn't allow search for Folder
@@ -70,21 +89,12 @@ function checkSyncFolder(){
       //if it does exist, get parent folder
       var bookmarksArray = bmsvc.getBookmarkIdsForURI(uri, {});
       tabsyncFolderId = bmsvc.getFolderIdForItem(bookmarksArray[0])
-
-      //delete all bookmarks inside tabsync group 
-      bmsvc.removeFolderChildren(tabsyncFolderId)
-
-      //add back in the anchor
-      var uri = ios.newURI("about:tabsync", null, null);
-      inewBkmkId = bmsvc.insertBookmark(tabsyncFolderId, uri, bmsvc.DEFAULT_INDEX, "TabSyncAnchor");
-   
    } else {
       //add the anchor if it doesn't exist
       tabsyncFolderId = bmsvc.createFolder(menuFolder, "TabSync", bmsvc.DEFAULT_INDEX);
       var uri = ios.newURI("about:tabsync", null, null);
       inewBkmkId = bmsvc.insertBookmark(tabsyncFolderId, uri, bmsvc.DEFAULT_INDEX, "TabSyncAnchor");
    }
-   bookmarkTabs() 
 }
 
 //save all open tabs to a bookmark folder to sync
@@ -95,14 +105,20 @@ function bookmarkTabs(){
    }
 }
 
+function purgeSync(){
+   findSyncFolder();
+   removeExistingSavedTabs();
+   bookmarkTabs();
+}
+
 //main
-tabs.on('ready', checkSyncFolder);
-checkSyncFolder()
+findSyncFolder()
+tabs.on('ready', purgeSync);
 
 //on button press, open new window with all tabs in this bookmark group
 var widget = widgets.Widget({
      id: "mozilla-link",
       label: "Mozilla website",
       contentURL: "http://www.mozilla.org/favicon.ico",
-      onClick: openSyncWindow
+      onClick: mergeSync 
 });
