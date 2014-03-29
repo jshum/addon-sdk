@@ -2,7 +2,7 @@
   "name": "tabsync",
   "title": "tabsync",
   "id": "jid1-9CiJA4fdqn8nHQ",
-  "description": "a basic add-on",
+  "description": "Addon that syncs all your currently open tabs as bookmarks with a button that will allow you to open all tabs that are currently open on other browsers",
   "author": "",
   "license": "MPL 2.0",
   "version": "0.1"
