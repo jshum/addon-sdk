@@ -29,6 +29,7 @@ var addTabs = {};
 function mergeSync(){
    findSyncFolder();
    getSyncWindow();
+   mergeTabs();
    //D. open all saved but unopened tabs
    for (var key in addTabs){
      console.log("c:"+key);
