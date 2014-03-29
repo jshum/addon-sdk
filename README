@@ -1,3 +1,14 @@
+TabSync Addon
+=================
+
+[a1]: https://addons.mozilla.org/en-US/firefox/addon/tabsync/
+[g1]: http://jshum.github.io/blog/pages/tabsync.html
+
+This is my fork of the Add-on SDK which I used to develop my TabSync extension. You can clone the repo and install the xpi file under tabsync/lib. Or you can simply download it from the [Firefox Addons Site][h1].
+
+You can read more about the project [here][h1]
+
+
 Add-on SDK README
 ==================
 
@@ -29,13 +40,4 @@ If you get an error when running cfx or have any other problems getting
 started, see the "Troubleshooting" guide at:
 https://developer.mozilla.org/en-US/Add-ons/SDK/Tutorials/Troubleshooting
 
-Bugs
--------
 
-* file a bug: https://bugzilla.mozilla.org/enter_bug.cgi?product=Add-on%20SDK
-
-
-Style Guidelines
---------------------
-
-* https://github.com/mozilla/addon-sdk/wiki/Coding-style-guide
